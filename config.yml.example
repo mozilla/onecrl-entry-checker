@@ -1,0 +1,3 @@
+host: staging.server.aws
+endpoint: /v1/buckets/staging/history
+user: user@example.com
