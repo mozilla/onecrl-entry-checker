@@ -1,3 +1,4 @@
 host: staging.server.aws
 endpoint: /v1/buckets/staging/history
 user: user@example.com
+livelist: https://firefox.settings.services.mozilla.com/v1/buckets/blocklists/collections/certificates/records
