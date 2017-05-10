@@ -9,6 +9,12 @@ def make_entry(issuer, serial):
   serial = serial.rstrip('\n ')
   return "issuer: {} serial: {}".format(issuer, serial)
 
+def find_id(dataset, ident):
+  for entry in dataset['data']:
+    if entry['id'] == ident:
+      return entry
+  return None
+
 def main():
   defaults = defaultdict(str)
   try:
@@ -25,8 +31,10 @@ def main():
                     default=defaults['user'])
   parser.add_option("-H", "--host", dest="host", help="Hostname",
                     default=defaults['host'])
-  parser.add_option("-E", "--endpoint", dest="endpoint", help="Path at the host",
-                    default=defaults['endpoint'])
+  parser.add_option("-S", "--staging-endpoint", dest="stagingendpoint", help="Path at the host for staging",
+                    default=defaults['stagingendpoint'])
+  parser.add_option("-P", "--prod-endpoint", dest="prodendpoint", help="Path at the host for production",
+                    default=defaults['prodendpoint'])
   parser.add_option("-l", "--livelist", dest="livelist", help="Live blocklist",
                     default=defaults['livelist'])
   parser.add_option("-q", "--quiet",
@@ -47,8 +55,8 @@ def main():
     parser.print_help()
     sys.exit(1)
 
-  if options.endpoint == "":
-    print("You must specify an endpoint")
+  if options.stagingendpoint == "":
+    print("You must specify a staging endpoint")
     parser.print_help()
     sys.exit(1)
 
@@ -87,7 +95,7 @@ def main():
   }
 
   found = set()
-  update_url = "https://{}{}".format(options.host, options.endpoint)
+  update_url = "https://{}{}".format(options.host, options.stagingendpoint)
 
   updatereq = requests.get(update_url, auth=auth, params=payload)
   update_dataset = updatereq.json()
@@ -97,10 +105,21 @@ def main():
   for entryData in update_dataset['data']:
     found.add(make_entry(entryData['issuerName'], entryData['serialNumber']))
 
+  prod_url = "https://{}{}".format(options.host, options.prodendpoint)
+
+  prod = set()
+  prodreq = requests.get(prod_url, auth=auth, params=payload)
+  prod_dataset = prodreq.json()
+  if 'data' not in prod_dataset:
+    raise Exception("Invalid login, or something else. Details: {}".format(prodreq.content))
+  for entryData in prod_dataset['data']:
+    prod.add(make_entry(entryData['issuerName'], entryData['serialNumber']))
+
   if liveentries | expected == found:
     print("The Kinto dataset found at {} equals the union of the expected file and the live list.".format(update_url))
     # return
 
+  deleted = prod-found
   notfound = expected-found
   missing = liveentries-(found-expected)
 
@@ -114,8 +133,22 @@ def main():
   print("Found live, but missing in Kinto:")
   pprint(sorted(missing))
 
+  if len(deleted) > 0 and deleted == missing:
+    print("The missing entries {} are all deleted.".format(len(deleted)))
+
+    for deletedEntry in deleted:
+      found = False
+      for entryData in prod_dataset['data']:
+        if deletedEntry == make_entry(entryData['issuerName'], entryData['serialNumber']):
+          found = True
+          print("Deleted ID: {} Serial: {}".format(entryData['id'], entryData['serialNumber']))
+          break
+      if not found:
+        raise("Missing entry?")
+
   if options.debug:
     print("Variables available:")
+    print("  prod - located in Kinto production")
     print("  expected - from the file on disk")
     print("  found - located in Kinto changeset")
     print("  liveentries - located in the live CDN list")
