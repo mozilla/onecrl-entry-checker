@@ -5,8 +5,8 @@ from optparse import OptionParser
 from pprint import pprint
 
 def make_entry(issuer, serial):
-  issuer = issuer.rstrip('\n ')
-  serial = serial.rstrip('\n ')
+  issuer = issuer.rstrip('\n')
+  serial = serial.rstrip('\n')
   return "issuer: {} serial: {}".format(issuer, serial)
 
 def find_id(dataset, ident):
