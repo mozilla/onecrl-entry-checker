@@ -115,36 +115,44 @@ def main():
   for entryData in prod_dataset['data']:
     prod.add(make_entry(entryData['issuerName'], entryData['serialNumber']))
 
-  if liveentries | expected == found:
-    print("The Kinto dataset found at {} equals the union of the expected file and the live list.".format(update_url))
-    # return
-
   deleted = prod-found
   notfound = expected-found
-  missing = liveentries-(found-expected)
+  missing = liveentries-(found|expected)
 
   print("")
-  print("Dataset contains {} added entries".format(len(found)))
+  print("Results:")
+  print("Pending Kinto Dataset (Found): {}\nAdded Entries (Expected): {}\nExpected But Not Pending (Not Found): {}\nDeleted: {}\nEntries In Production But Lost Without Being Deleted (Missing): {}\n".format(len(found), len(expected), len(notfound), len(deleted), len(missing)))
   print("")
 
-  print("Expected, but not found in Kinto:")
-  pprint(sorted(notfound))
+  if liveentries | expected == found:
+    print("The Kinto dataset found at {} equals the union of the expected file and the live list.".format(update_url))
 
-  print("Found live, but missing in Kinto:")
-  pprint(sorted(missing))
+  if len(notfound) > 0:
+    print("Expected, but not found in Kinto:")
+    pprint(sorted(notfound))
+  else:
+    print("Nothing not found.")
 
-  if len(deleted) > 0 and deleted == missing:
-    print("The missing entries {} are all deleted.".format(len(deleted)))
+  if len(deleted) > 0:
+    if deleted == missing:
+      print("The missing entries {} are all deleted.".format(len(deleted)))
 
-    for deletedEntry in deleted:
-      found = False
-      for entryData in prod_dataset['data']:
-        if deletedEntry == make_entry(entryData['issuerName'], entryData['serialNumber']):
-          found = True
-          print("Deleted ID: {} Serial: {}".format(entryData['id'], entryData['serialNumber']))
-          break
-      if not found:
-        raise("Missing entry?")
+      for deletedEntry in deleted:
+        seen = False
+        for entryData in prod_dataset['data']:
+          if deletedEntry == make_entry(entryData['issuerName'], entryData['serialNumber']):
+            seen = True
+            print("Deleted ID: {} Serial: {}".format(entryData['id'], entryData['serialNumber']))
+            break
+        if not seen:
+          print("Deleted Entry: {}".format(deletedEntry))
+          raise("Missing entry?")
+    else:
+      print("Found live, but missing in Kinto:")
+      pprint(sorted(missing))
+  else:
+    print("Nothing deleted.")
+
 
   if options.debug:
     print("Variables available:")
