@@ -3,6 +3,7 @@ import json, yaml, requests, getpass, sys
 from collections import defaultdict
 from optparse import OptionParser
 from pprint import pprint
+from colorama import init, Fore
 
 def make_entry(issuer, serial):
   issuer = issuer.rstrip('\n')
@@ -15,7 +16,12 @@ def find_id(dataset, ident):
       return entry
   return None
 
+def gIfR(condition):
+  return Fore.GREEN if condition else Fore.RED
+
 def main():
+  init()
+
   defaults = defaultdict(str)
   try:
     with open (".config.yml", 'r') as ymlfile:
@@ -121,22 +127,24 @@ def main():
 
   print("")
   print("Results:")
-  print("Pending Kinto Dataset (Found): {}\nAdded Entries (Expected): {}\nExpected But Not Pending (Not Found): {}\nDeleted: {}\nEntries In Production But Lost Without Being Deleted (Missing): {}\n".format(len(found), len(expected), len(notfound), len(deleted), len(missing)))
+  print("Pending Kinto Dataset (Found): {}".format(len(found)))
+  print("Added Entries (Expected): {}".format(len(expected)))
+  print("{c}Expected But Not Pending (Not Found): {}".format(len(notfound), c=gIfR(len(notfound)==0)) + Fore.RESET)
+  print("Deleted: {}".format(len(deleted)))
+  print("{c}Entries In Production But Lost Without Being Deleted (Missing): {}".format(len(missing), c=gIfR(len(missing)==0)) + Fore.RESET)
   print("")
 
   if liveentries | expected == found:
-    print("The Kinto dataset found at {} equals the union of the expected file and the live list.".format(update_url))
+    print(Fore.GREEN + "The Kinto dataset found at {} equals the union of the expected file and the live list.".format(update_url) + Fore.RESET)
 
   if len(notfound) > 0:
-    print("Expected, but not found in Kinto:")
+    print(Fore.RED + "Expected, but not found in Kinto:" + Fore.RESET)
     pprint(sorted(notfound))
   else:
     print("Nothing not found.")
 
   if len(deleted) > 0:
     if deleted == missing:
-      print("The missing entries {} are all deleted.".format(len(deleted)))
-
       for deletedEntry in deleted:
         seen = False
         for entryData in prod_dataset['data']:
@@ -145,10 +153,12 @@ def main():
             print("Deleted ID: {} Serial: {}".format(entryData['id'], entryData['serialNumber']))
             break
         if not seen:
-          print("Deleted Entry: {}".format(deletedEntry))
+          print(Fore.RED + "Deleted Entry: {}".format(deletedEntry) + Fore.RESET)
           raise("Missing entry?")
+
+      print(Fore.GREEN + "The missing entries {} are all deleted.".format(len(deleted)) + Fore.RESET)
     else:
-      print("Found live, but missing in Kinto:")
+      print(Fore.RED + "Found live, but missing in Kinto:" + Fore.RESET)
       pprint(sorted(missing))
   else:
     print("Nothing deleted.")
