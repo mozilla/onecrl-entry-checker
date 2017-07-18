@@ -17,7 +17,7 @@ def find_id(dataset, ident):
   return None
 
 def gIfR(condition):
-  return Fore.GREEN if condition else Fore.RED
+  return Fore.GREEN + "[GOOD] "  if condition else Fore.RED + "[BAD] "
 
 def main():
   init()
@@ -135,10 +135,10 @@ def main():
   print("")
 
   if liveentries | expected == found:
-    print(Fore.GREEN + "The Kinto dataset found at {} equals the union of the expected file and the live list.".format(update_url) + Fore.RESET)
+    print(Fore.GREEN + "[GOOD] The Kinto dataset found at production equals the union of the expected file and the live list." + Fore.RESET)
 
   if len(notfound) > 0:
-    print(Fore.RED + "Expected, but not found in Kinto:" + Fore.RESET)
+    print(Fore.RED + "[BAD] Expected, but not found in Kinto:" + Fore.RESET)
     pprint(sorted(notfound))
   else:
     print("Nothing not found.")
@@ -153,12 +153,12 @@ def main():
             print("Deleted ID: {} Serial: {}".format(entryData['id'], entryData['serialNumber']))
             break
         if not seen:
-          print(Fore.RED + "Deleted Entry: {}".format(deletedEntry) + Fore.RESET)
+          print(Fore.RED + "[BAD] Deleted Entry: {}".format(deletedEntry) + Fore.RESET)
           raise("Missing entry?")
 
-      print(Fore.GREEN + "The missing entries {} are all deleted.".format(len(deleted)) + Fore.RESET)
+      print(Fore.GREEN + "[GOOD] The missing entries {} are all deleted.".format(len(deleted)) + Fore.RESET)
     else:
-      print(Fore.RED + "Found live, but missing in Kinto:" + Fore.RESET)
+      print(Fore.RED + "[BAD] Found live, but missing in Kinto:" + Fore.RESET)
       pprint(sorted(missing))
   else:
     print("Nothing deleted.")
@@ -174,3 +174,4 @@ def main():
 
 if __name__ == "__main__":
   main()
+
