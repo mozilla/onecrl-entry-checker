@@ -1,5 +1,6 @@
 # Verify Kinto sets with a delta expected list
-import json, yaml, requests, getpass, sys
+import json, yaml, requests, getpass, sys, base64, io, codecs
+from xml.etree import ElementTree
 from collections import defaultdict
 from optparse import OptionParser
 from pprint import pprint
@@ -33,6 +34,7 @@ def main():
   parser = OptionParser()
   parser.add_option("-e", "--expected", dest="expected", metavar="FILE",
                     help="Expected input file", default=defaults['expected'])
+  parser.add_option("-b", "--bug", dest="bugnum", help="Bug #")
   parser.add_option("-u", "--user", dest="user", help="LDAP Account Username",
                     default=defaults['user'])
   parser.add_option("-H", "--host", dest="host", help="Hostname",
@@ -51,8 +53,8 @@ def main():
                     help="Start debugger after run")
   (options, args) = parser.parse_args()
 
-  if options.expected == "":
-    print("You must specify an expected file")
+  if options.expected == "" and options.bugnum is None:
+    print("You must specify an expected file or a bug number")
     parser.print_help()
     sys.exit(1)
 
@@ -77,10 +79,27 @@ def main():
     sys.exit(1)
 
   expected = set()
-  with open(options.expected) as expected_data:
+  expected_source = None
+
+  if options.expected != "":
+    expected_source = open(options.expected)
+  else:
+    bug_page = requests.get("https://bugzilla.mozilla.org/show_bug.cgi?ctype=xml&id={}".format(options.bugnum))
+    bug = ElementTree.fromstring(bug_page.content)[0]
+    for attachment in bug.findall("attachment"):
+      if attachment.attrib['isobsolete'] == '0' and attachment.find("filename").text == "BugData.txt":
+        print("Downloading attachment ID {} found, dated {}".format(attachment.find("attachid").text,
+                                                        attachment.find("date").text))
+        utfData = codecs.decode(base64.b64decode(attachment.find("data").text))
+        expected_source = io.StringIO(utfData)
+
+  with expected_source as expected_data:
     for line in expected_data.readlines():
       parts=line.strip().split(" ")
       expected.add(make_entry(parts[1], parts[3]))
+
+  print("Intermediates to be revoked")
+  pprint(expected)
 
   liveentries = set()
   liveids = set()
@@ -126,6 +145,11 @@ def main():
   missing = liveentries-(found|expected)
 
   print("")
+  if options.expected != "":
+    print("Evaluating expected file = '{}'".format(options.expected))
+  else:
+    print("Downloading intermediates to be revoked from bug # {}".format(options.bugnum))
+  print("")
   print("Results:")
   print("Pending Kinto Dataset (Found): {}".format(len(found)))
   print("Added Entries (Expected): {}".format(len(expected)))
@@ -134,8 +158,18 @@ def main():
   print("{c}Entries In Production But Lost Without Being Deleted (Missing): {}".format(len(missing), c=gIfR(len(missing)==0)) + Fore.RESET)
   print("")
 
+  if expected == found-prod:
+    print(Fore.GREEN + "[GOOD] The Expected file matches the change between the staged Kinto and production." + Fore.RESET)
+  else:
+    print(Fore.RED + "[BAD] The Expected file doesn't match; there are {} differences seen, but '{}' is {} entries long".format(len(found-prod), options.expected, len(expected)) + Fore.RESET)
+
   if liveentries | expected == found:
     print(Fore.GREEN + "[GOOD] The Kinto dataset found at production equals the union of the expected file and the live list." + Fore.RESET)
+  else:
+    print(Fore.RED + "[BAD] The Kinto dataset is not equal to the union of the live list and the expected file. Differences follow." + Fore.RESET)
+    for entry in found - (liveentries | expected):
+      print(Fore.RED + " * {}".format(entry) + Fore.RESET)
+
 
   if len(notfound) > 0:
     print(Fore.RED + "[BAD] Expected, but not found in Kinto:" + Fore.RESET)
@@ -162,7 +196,6 @@ def main():
       pprint(sorted(missing))
   else:
     print("Nothing deleted.")
-
 
   if options.debug:
     print("Variables available:")
