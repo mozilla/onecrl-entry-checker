@@ -1,21 +1,29 @@
 
-# Grab a changeset from BMO:
+# Requirements
+
+You'll need read access to the `prod` bucket and read/write access to the `staging` bucket on a suitable copy of Kinto.
+
+# Usage
+
+## configure the yaml
 ```
-curl 'https://bug1343305.bmoattachments.org/attachment.cgi?id=8842097' > expected.txt
+ cp config.yml.example .config.yml
+ vim .config.yml
 ```
 
-# configure the yaml
+## Run
 ```
-cp config.yml.example .config.yml
-vim .config.yml
+ python3 kinto-blacklist-entry-checker.py --bug 8842097
+```
+or
+```
+ # Grab a changeset from BMO:
+ curl 'https://bug1343305.bmoattachments.org/attachment.cgi?id=8842097' > expected.txt
+ # and then process that changeset
+ python3 kinto-blacklist-entry-checker.py --expect expected.txt
 ```
 
-# Run
-```
-python3 kinto-blacklist-entry-checker.py --expect expected.txt
-```
-
-# Example Output
+## Example Output
 ```
 LDAP account password for user@company:
 Password:
