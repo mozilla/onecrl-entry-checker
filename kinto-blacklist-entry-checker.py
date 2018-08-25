@@ -37,11 +37,9 @@ def main():
   parser.add_option("-b", "--bug", dest="bugnum", help="Bug #")
   parser.add_option("-u", "--user", dest="user", help="LDAP Account Username",
                     default=defaults['user'])
-  parser.add_option("-H", "--host", dest="host", help="Hostname",
-                    default=defaults['host'])
-  parser.add_option("-S", "--staging-endpoint", dest="stagingendpoint", help="Path at the host for staging",
+  parser.add_option("-S", "--staging-endpoint", dest="stagingendpoint", help="URL for staging",
                     default=defaults['stagingendpoint'])
-  parser.add_option("-P", "--prod-endpoint", dest="prodendpoint", help="Path at the host for production",
+  parser.add_option("-P", "--prod-endpoint", dest="prodendpoint", help="URL for production",
                     default=defaults['prodendpoint'])
   parser.add_option("-l", "--livelist", dest="livelist", help="Live blocklist",
                     default=defaults['livelist'])
@@ -58,13 +56,13 @@ def main():
     parser.print_help()
     sys.exit(1)
 
-  if options.host == "":
-    print("You must specify a host")
+  if options.prodendpoint == "":
+    print("You must specify production URL")
     parser.print_help()
     sys.exit(1)
 
   if options.stagingendpoint == "":
-    print("You must specify a staging endpoint")
+    print("You must specify a staging URL")
     parser.print_help()
     sys.exit(1)
 
@@ -120,7 +118,7 @@ def main():
   }
 
   found = set()
-  update_url = "https://{}{}".format(options.host, options.stagingendpoint)
+  update_url = options.stagingendpoint
 
   updatereq = requests.get(update_url, auth=auth, params=payload)
   update_dataset = updatereq.json()
@@ -130,7 +128,7 @@ def main():
   for entryData in update_dataset['data']:
     found.add(make_entry(entryData['issuerName'], entryData['serialNumber']))
 
-  prod_url = "https://{}{}".format(options.host, options.prodendpoint)
+  prod_url = options.prodendpoint
 
   prod = set()
   prodreq = requests.get(prod_url, auth=auth, params=payload)
