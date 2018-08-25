@@ -1,6 +1,5 @@
-host: staging.server.aws
-stagingendpoint: /v1/buckets/staging/collections/certificates/records
-prodendpoint: /v1/buckets/blocklist/collections/certificates/records
-
+stagingendpoint: https://staging.server.aws/v1/buckets/staging/collections/certificates/records
+prodendpoint: https://staging.server.aws/v1/buckets/blocklist/collections/certificates/records
+# if user doesn't have read access to prod, set prodendpoint = livelist URL
 user: user@example.com
 livelist: https://firefox.settings.services.mozilla.com/v1/buckets/blocklists/collections/certificates/records
