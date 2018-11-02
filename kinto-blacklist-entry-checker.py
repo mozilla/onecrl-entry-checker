@@ -44,8 +44,8 @@ def main():
   parser.add_option("-l", "--livelist", dest="livelist", help="Live blocklist",
                     default=defaults['livelist'])
   parser.add_option("-q", "--quiet",
-                    action="store_false", dest="verbose", default=True,
-                    help="don't print status messages to stdout")
+                    action="store_true", dest="verbose", default=False,
+                    help="be more verbose to stdout")
   parser.add_option("-d", "--debug",
                     action="store_true", dest="debug", default=False,
                     help="Start debugger after run")
@@ -86,13 +86,17 @@ def main():
         utfData = codecs.decode(base64.b64decode(attachment.find("data").text))
         expected_source = io.StringIO(utfData)
 
+  print("Intermediates to be revoked")
+
   with expected_source as expected_data:
     for line in expected_data.readlines():
       parts=line.strip().split(" ")
-      expected.add(make_entry(parts[1], parts[3]))
+      issuer = parts[1]
+      serial = parts[3]
+      expected.add(make_entry(issuer, serial))
 
-  print("Intermediates to be revoked")
-  pprint(expected)
+      if options.verbose:
+        print("Issuer: {} Serial: {}".format(str(base64.b64decode(issuer)), base64.b16encode(base64.b64decode(serial))))
 
   liveentries = set()
   liveids = set()
