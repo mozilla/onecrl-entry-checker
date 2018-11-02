@@ -1,5 +1,5 @@
 # Verify Kinto sets with a delta expected list
-import json, yaml, requests, getpass, sys, base64, io, codecs
+import json, yaml, requests, sys, base64, io, codecs
 from xml.etree import ElementTree
 from collections import defaultdict
 from optparse import OptionParser
@@ -35,8 +35,6 @@ def main():
   parser.add_option("-e", "--expected", dest="expected", metavar="FILE",
                     help="Expected input file", default=defaults['expected'])
   parser.add_option("-b", "--bug", dest="bugnum", help="Bug #")
-  parser.add_option("-u", "--user", dest="user", help="LDAP Account Username",
-                    default=defaults['user'])
   parser.add_option("-H", "--host", dest="host", help="Hostname",
                     default=defaults['host'])
   parser.add_option("-S", "--staging-endpoint", dest="stagingendpoint", help="Path at the host for staging",
@@ -65,11 +63,6 @@ def main():
 
   if options.stagingendpoint == "":
     print("You must specify a staging endpoint")
-    parser.print_help()
-    sys.exit(1)
-
-  if options.user == "":
-    print("You must specify a user")
     parser.print_help()
     sys.exit(1)
 
@@ -112,8 +105,6 @@ def main():
     liveentries.add(make_entry(entryData['issuerName'], entryData['serialNumber']))
     liveids.add(entryData['id'])
 
-  print("LDAP account password for {}:".format(options.user))
-  auth = (options.user, getpass.getpass())
   payload = {
     "_sort": "-last_modified",
     "_limit": 9999
@@ -122,7 +113,7 @@ def main():
   found = set()
   update_url = "https://{}{}".format(options.host, options.stagingendpoint)
 
-  updatereq = requests.get(update_url, auth=auth, params=payload)
+  updatereq = requests.get(update_url, params=payload)
   update_dataset = updatereq.json()
   if 'data' not in update_dataset:
     raise Exception("Invalid login, or something else. Details: {}".format(updatereq.content))
@@ -133,7 +124,7 @@ def main():
   prod_url = "https://{}{}".format(options.host, options.prodendpoint)
 
   prod = set()
-  prodreq = requests.get(prod_url, auth=auth, params=payload)
+  prodreq = requests.get(prod_url, params=payload)
   prod_dataset = prodreq.json()
   if 'data' not in prod_dataset:
     raise Exception("Invalid login, or something else. Details: {}".format(prodreq.content))
