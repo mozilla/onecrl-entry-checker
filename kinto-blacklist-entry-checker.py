@@ -120,7 +120,7 @@ def main():
   updatereq = requests.get(update_url, params=payload)
   update_dataset = updatereq.json()
   if 'data' not in update_dataset:
-    raise Exception("Invalid login, or something else. Details: {}".format(updatereq.content))
+    raise Exception("Invalid login, or something else. URL: {} Details: {}".format(update_url, updatereq.content))
 
   for entryData in update_dataset['data']:
     found.add(make_entry(entryData['issuerName'], entryData['serialNumber']))
