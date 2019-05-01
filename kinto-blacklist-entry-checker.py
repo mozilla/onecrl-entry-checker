@@ -26,7 +26,7 @@ def main():
   defaults = defaultdict(str)
   try:
     with open (".config.yml", 'r') as ymlfile:
-      dataset = yaml.load(ymlfile)
+      dataset = yaml.load(ymlfile, Loader=yaml.BaseLoader)
       defaults.update(dataset)
   except FileNotFoundError:
     print("No .config.yml; continuing without defaults.")
@@ -69,6 +69,10 @@ def main():
   if options.livelist == "":
     print("You must specify a livelist")
     parser.print_help()
+    sys.exit(1)
+
+  if "-writer" not in options.host:
+    print("Your host needs to be the one with -writer in its name")
     sys.exit(1)
 
   expected = set()
@@ -115,15 +119,29 @@ def main():
   }
 
   found = set()
-  update_url = "https://{}{}".format(options.host, options.stagingendpoint)
+  while not found:
+    print("We're going to need a bearer token to log into {}.".format(options.host))
+    print("Please log in to https://{}/v1/admin/ and use devtools to find the Authorization header.")
+    print("Example: Authorization: Bearer ZZkZZZxNZZZZ_0ZZZZ4ZZZZZNcZZZZ")
 
-  updatereq = requests.get(update_url, params=payload)
-  update_dataset = updatereq.json()
-  if 'data' not in update_dataset:
-    raise Exception("Invalid login, or something else. URL: {} Details: {}".format(update_url, updatereq.content))
+    token = input("> ")
+    if token.startswith("Authorization: Bearer"):
+      token = token.split("Bearer")[1].strip()
 
-  for entryData in update_dataset['data']:
-    found.add(make_entry(entryData['issuerName'], entryData['serialNumber']))
+    headers = {"Authorization": "Bearer {}".format(token)}
+
+    update_url = "https://{}{}".format(options.host, options.stagingendpoint)
+
+    updatereq = requests.get(update_url, params=payload, headers=headers)
+    update_dataset = updatereq.json()
+    if 'data' not in update_dataset:
+      print("Invalid login, or something else. URL: {} Details: {}".format(update_url, updatereq.content))
+      continue
+
+    for entryData in update_dataset['data']:
+      found.add(make_entry(entryData['issuerName'], entryData['serialNumber']))
+
+    print("Worked, downloaded {} entries from the staging list.".format(len(found)))
 
   prod_url = "https://{}{}".format(options.host, options.prodendpoint)
 
