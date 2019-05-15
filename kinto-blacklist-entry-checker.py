@@ -120,8 +120,8 @@ def main():
 
   found = set()
   while not found:
-    print("We're going to need a bearer token to log into {}.".format(options.host))
-    print("Please log in to https://{}/v1/admin/ and use devtools to find the Authorization header.")
+    print(f"We're going to need a bearer token to log into {options.host}.")
+    print(f"Please log in to https://{options.host}/v1/admin/ and use devtools to find the Authorization header.")
     print("Example: Authorization: Bearer ZZkZZZxNZZZZ_0ZZZZ4ZZZZZNcZZZZ")
 
     token = input("> ")
