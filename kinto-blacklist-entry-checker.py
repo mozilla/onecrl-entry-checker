@@ -84,7 +84,7 @@ def main():
     bug_page = requests.get("https://bugzilla.mozilla.org/show_bug.cgi?ctype=xml&id={}".format(options.bugnum))
     bug = ElementTree.fromstring(bug_page.content)[0]
     for attachment in bug.findall("attachment"):
-      if attachment.attrib['isobsolete'] == '0' and attachment.find("filename").text == "BugData.txt":
+      if attachment.attrib['isobsolete'] == '0' and "BugData.txt" in attachment.find("filename").text:
         print("Downloading attachment ID {} found, dated {}".format(attachment.find("attachid").text,
                                                         attachment.find("date").text))
         utfData = codecs.decode(base64.b64decode(attachment.find("data").text))
