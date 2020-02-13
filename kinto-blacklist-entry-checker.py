@@ -1,15 +1,27 @@
 # Verify Kinto sets with a delta expected list
-import json, yaml, requests, sys, base64, io, codecs
+import json, yaml, requests, sys, base64, io, codecs, re
 from xml.etree import ElementTree
 from collections import defaultdict
 from optparse import OptionParser
 from pprint import pprint
 from colorama import init, Fore
 
-def make_entry(issuer, serial):
-  issuer = issuer.rstrip('\n')
-  serial = serial.rstrip('\n')
-  return "issuer: {} serial: {}".format(issuer, serial)
+def canonicalize(s):
+  return s.strip("\n ")
+
+def make_entry(**data):
+  if "issuerName" in data and "serialNumber" in data:
+    data["issuer"] = data["issuerName"]
+    data["serial"] = data["serialNumber"]
+  if "issuer" in data and "serial" in data:
+    return f"issuer: {canonicalize(data['issuer'])} serial: {canonicalize(data['serial'])}"
+  if "pubKeyHash" in data and "subject" in data:
+    return f"pubKeyHash: {canonicalize(data['pubKeyHash'])} subject: {canonicalize(data['subject'])}"
+  raise Exception(f"Unexpected entry components {data}")
+
+def entry_data_from_line(line):
+  parts = re.findall(r'(\S+): (\S+)', line, 0)
+  return dict(parts)
 
 def find_id(dataset, ident):
   for entry in dataset['data']:
@@ -94,10 +106,8 @@ def main():
 
   with expected_source as expected_data:
     for line in expected_data.readlines():
-      parts=line.strip().split(" ")
-      issuer = parts[1]
-      serial = parts[3]
-      expected.add(make_entry(issuer, serial))
+      entry_data = entry_data_from_line(line)
+      expected.add(make_entry(**entry_data))
 
       if options.verbose:
         print("Issuer: {} Serial: {}".format(str(base64.b64decode(issuer)), base64.b16encode(base64.b64decode(serial))))
@@ -110,7 +120,7 @@ def main():
     raise Exception("Invalid livelist, or something else. Details: {}".format(livereq.content))
 
   for entryData in livelist_dataset['data']:
-    liveentries.add(make_entry(entryData['issuerName'], entryData['serialNumber']))
+    liveentries.add(make_entry(**entryData))
     liveids.add(entryData['id'])
 
   payload = {
@@ -139,7 +149,7 @@ def main():
       continue
 
     for entryData in update_dataset['data']:
-      found.add(make_entry(entryData['issuerName'], entryData['serialNumber']))
+      found.add(make_entry(**entryData))
 
     print("Worked, downloaded {} entries from the staging list.".format(len(found)))
 
@@ -151,7 +161,7 @@ def main():
   if 'data' not in prod_dataset:
     raise Exception("Invalid login, or something else. Details: {}".format(prodreq.content))
   for entryData in prod_dataset['data']:
-    prod.add(make_entry(entryData['issuerName'], entryData['serialNumber']))
+    prod.add(make_entry(**entryData))
 
   deleted = prod-found
   notfound = expected-found
@@ -195,7 +205,7 @@ def main():
       for deletedEntry in deleted:
         seen = False
         for entryData in prod_dataset['data']:
-          if deletedEntry == make_entry(entryData['issuerName'], entryData['serialNumber']):
+          if deletedEntry == make_entry(**entryData):
             seen = True
             print("Deleted ID: {} Serial: {}".format(entryData['id'], entryData['serialNumber']))
             break
