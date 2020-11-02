@@ -2,7 +2,7 @@
 
 import requests, base64, io, itertools
 from collections import UserList
-from rich import console, table
+from rich import console
 
 console = console.Console()
 
@@ -13,24 +13,11 @@ bucket_staging="security-state-staging"
 bucket_preview="security-state-preview"
 bucket_publish="security-state"
 
-def canonicalize(s):
-  return s.strip("\n ")
-
 def make_entry(**data):
-  if "issuerName" in data and "serialNumber" in data:
-    data["issuer"] = data["issuerName"]
-    data["serial"] = data["serialNumber"]
-  if "issuer" in data and "serial" in data:
-    return {
-      "issuer": canonicalize(data['issuer']),
-      "serial": canonicalize(data['serial'])
-    }
-  if "pubKeyHash" in data and "subject" in data:
-    return {
-      "pubKeyHash": canonicalize(data['pubKeyHash']),
-      "subject": canonicalize(data['subject'])
-    }
-  raise Exception(f"Unexpected entry components {data}")
+  del data["schema"]
+  del data["last_modified"]
+  del data["id"]
+  return data
 
 def is_equivalent(left, right):
   try:
@@ -89,18 +76,11 @@ def main():
   if is_equivalent(stage_stage, stage_publish):
     console.log("No changes are waiting")
   else:
-    console.log(f"There are {len(stage_stage)-len(stage_publish)} changes waiting:")
+    console.log(f"There are {len(stage_stage)-len(stage_publish)} changes waiting. Adding:")
 
-    datatable = table.Table(title="Added entries")
     for entry in stage_stage:
       if entry not in stage_publish:
-        if "issuer" in entry:
-          datatable.add_row(entry["issuer"], entry["serial"])
-        elif "pubKeyHash" in entry:
-          datatable.add_row(entry["pubKeyHash"], entry["subject"])
-        else:
-          raise Exception("Unexpected entry", entry)
-    console.print(datatable)
+        console.print(entry)
 
 
 
