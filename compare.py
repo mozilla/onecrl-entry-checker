@@ -66,7 +66,6 @@ def main():
 
   verify_equivalent(stage_stage, prod_stage)
   verify_equivalent(stage_preview, prod_preview)
-  verify_equivalent(stage_publish, prod_publish)
 
   console.log("Verifying stage against preview")
   for left, right in itertools.combinations([stage_stage, stage_preview, prod_stage, prod_preview], 2):
@@ -74,12 +73,17 @@ def main():
     console.log(f"{left} and {right} are equivalent")
 
   if is_equivalent(stage_stage, stage_publish):
-    console.log("No changes are waiting")
+    console.log("No changes are waiting in staging")
   else:
-    console.log(f"There are {len(stage_stage)-len(stage_publish)} changes waiting. Adding:")
+    console.log(f"There are {len(prod_stage)-len(prod_publish)} changes waiting in staging.")
 
-    for entry in stage_stage:
-      if entry not in stage_publish:
+  if is_equivalent(prod_stage, prod_publish):
+    console.log("No changes are waiting in production")
+  else:
+    console.log(f"There are {len(prod_stage)-len(prod_publish)} changes waiting in production. Adding:")
+
+    for entry in prod_stage:
+      if entry not in prod_publish:
         console.print(entry)
 
 
