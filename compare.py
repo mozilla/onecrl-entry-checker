@@ -87,6 +87,10 @@ def main():
         console.print(entry)
 
 
+  if is_equivalent(stage_stage, stage_publish) and not is_equivalent(prod_stage, prod_publish):
+    console.log("""Staging is updated, and production changes are waiting, so Firefox can use
+      Remote Settings DevTools (https://github.com/mozilla-extensions/remote-settings-devtools)
+      to test OneCRL.""")
 
 if __name__ == "__main__":
   main()
