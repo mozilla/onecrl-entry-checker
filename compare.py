@@ -109,8 +109,9 @@ def main():
     ):
         console.log(
             """Staging is updated, and production changes are waiting, so Firefox can use
-      Remote Settings DevTools (https://github.com/mozilla-extensions/remote-settings-devtools)
-      to test OneCRL."""
+Remote Settings DevTools (https://github.com/mozilla-extensions/remote-settings-devtools)
+and cert-storage-inspector (https://github.com/mozkeeler/cert-storage-inspector) to test
+OneCRL."""
         )
 
 
