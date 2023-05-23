@@ -6,8 +6,8 @@ from rich import console
 
 console = console.Console()
 
-base_prod = "https://settings.prod.mozaws.net/v1"
-base_stage = "https://settings.stage.mozaws.net/v1"
+base_prod = "https://firefox.settings.services.mozilla.com/v1"
+base_stage = "https://firefox.settings.services.allizom.org/v1"
 
 bucket_staging = "security-state-staging"
 bucket_preview = "security-state-preview"
