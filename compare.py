@@ -1,13 +1,13 @@
 # Verify Kinto sets to ensure coherency between Stage and Prod, and all affected buckets
 
-import requests, base64, io, itertools
-from collections import UserList
+import requests, base64, io, itertools, json
+from collections import Counter, UserList
 from rich import console
 
 console = console.Console()
 
 base_prod = "https://firefox.settings.services.mozilla.com/v1"
-base_stage = "https://firefox.settings.services.allizom.org/v1"
+base_stage = "https://remote-settings.allizom.org/v1"
 
 bucket_staging = "security-state-staging"
 bucket_preview = "security-state-preview"
@@ -46,8 +46,40 @@ class Records(UserList):
         self.data = [make_entry(**entry) for entry in data]
 
     def __str__(self):
-        name = "stage" if "stage" in self.base else "prod"
+        name = "stage" if self.base == base_stage else "prod"
         return f"{name}/{self.bucket} ({len(self)})"
+
+
+def pending_changes(stage, publish):
+    """Return the entries that publishing stage would add and delete.
+
+    Entries are compared as multisets, so that deleting one of several
+    identical records is counted.
+    """
+
+    def counts(records):
+        return Counter(json.dumps(entry, sort_keys=True) for entry in records)
+
+    staged, published = counts(stage), counts(publish)
+    added = [json.loads(e) for e in (staged - published).elements()]
+    deleted = [json.loads(e) for e in (published - staged).elements()]
+    return added, deleted
+
+
+def report_pending(name, stage, publish):
+    added, deleted = pending_changes(stage, publish)
+    if not added and not deleted:
+        console.log(f"No changes are waiting in {name}")
+        return
+    console.log(
+        f"There are {len(added) + len(deleted)} changes waiting in {name}: "
+        f"{len(added)} additions and {len(deleted)} deletions."
+    )
+    for label, entries in (("Adding", added), ("Deleting", deleted)):
+        if entries:
+            console.log(f"{label} {len(entries)} entries in {name}:")
+            for entry in entries:
+                console.print(entry)
 
 
 def get_records(base, bucket):
@@ -86,23 +118,8 @@ def main():
         verify_equivalent(left, right)
         console.log(f"{left} and {right} are equivalent")
 
-    if is_equivalent(stage_stage, stage_publish):
-        console.log("No changes are waiting in staging")
-    else:
-        console.log(
-            f"There are {len(prod_stage)-len(prod_publish)} changes waiting in staging."
-        )
-
-    if is_equivalent(prod_stage, prod_publish):
-        console.log("No changes are waiting in production")
-    else:
-        console.log(
-            f"There are {len(prod_stage)-len(prod_publish)} changes waiting in production. Adding:"
-        )
-
-        for entry in prod_stage:
-            if entry not in prod_publish:
-                console.print(entry)
+    report_pending("staging", stage_stage, stage_publish)
+    report_pending("production", prod_stage, prod_publish)
 
     if is_equivalent(stage_stage, stage_publish) and not is_equivalent(
         prod_stage, prod_publish
